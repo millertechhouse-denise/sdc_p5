@@ -7,10 +7,7 @@ import time
 from sklearn.svm import LinearSVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.externals import joblib
-# NOTE: the next import is only valid 
-# for scikit-learn version <= 0.17
-# if you are using scikit-learn >= 0.18 then use this:
-# from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
 from sklearn.cross_validation import train_test_split
 import training as tr
 import helper_functions as hp
@@ -56,28 +53,17 @@ y = np.hstack((np.ones(len(car_features)), np.zeros(len(notcar_features))))
 
 # Split up data into randomized training and test sets
 rand_state = np.random.randint(0, 100)
+scaled_X, y = shuffle(scaled_X, y)
 X_train, X_test, y_train, y_test = train_test_split(
     scaled_X, y, test_size=0.2, random_state=rand_state)
 
-#print('Using spatial binning of:',spatial,
- #   'and', histbin,'histogram bins')
-#print('Feature vector length:', len(X_train[0]))
-# Use a linear SVC 
 svc = LinearSVC()
-# Check the training time for the SVC
-t=time.time()
+
 svc.fit(X_train, y_train)
-t2 = time.time()
-print(round(t2-t, 2), 'Seconds to train SVC...')
+
 # Check the score of the SVC
 joblib.dump(svc, 'saved_svc.pickle') 
 joblib.dump(X_scaler, 'saved_scalar.pickle') 
 clf = joblib.load('saved_svc.pickle')
 print('Test Accuracy of SVC = ', round(clf.score(X_test, y_test), 4))
-# Check the prediction time for a single sample
-t=time.time()
-n_predict = 10
-print('My SVC predicts: ', clf.predict(X_test[0:n_predict]))
-print('For these',n_predict, 'labels: ', y_test[0:n_predict])
-t2 = time.time()
-print(round(t2-t, 5), 'Seconds to predict', n_predict,'labels with SVC')
+

@@ -25,30 +25,11 @@ def extract_features(imgs, color_space='RGB', spatial_size=(32, 32),
         # Read in each one by one
         image = mpimg.imread(file)
 
-        feature_image = convert_color(image, conv=color_space)
-       
-        if spatial_feat == True:
-            spatial_features = bin_spatial(feature_image, size=spatial_size)
-            file_features.append(spatial_features)
-        if hist_feat == True:
-            # Apply color_hist()
-            hist_features = color_hist(feature_image, nbins=hist_bins)
-            file_features.append(hist_features)
-        if hog_feat == True:
-        # Call get_hog_features() with vis=False, feature_vec=True
-            if hog_channel == 'ALL':
-                hog_features = []
-                for channel in range(feature_image.shape[2]):
-                    hog_features.append(get_hog_features(feature_image[:,:,channel], 
-                                        orient, pix_per_cell, cell_per_block, 
-                                        vis=False, feature_vec=True))
-                hog_features = np.ravel(hog_features)        
-            else:
-                hog_features = get_hog_features(feature_image[:,:,hog_channel], orient, 
-                            pix_per_cell, cell_per_block, vis=False, feature_vec=True)
-            # Append the new feature vector to the features list
-            file_features.append(hog_features)
-        features.append(np.concatenate(file_features))
+        file_features = single_img_features(image, color_space=color_space, spatial_size=spatial_size,
+                        hist_bins=hist_bins, orient=orient, 
+                        pix_per_cell=pix_per_cell, cell_per_block=cell_per_block, hog_channel=hog_channel,
+                        spatial_feat=spatial_feat, hist_feat=hist_feat, hog_feat=hog_feat)
+        features.append(file_features)
     # Return list of feature vectors
     return features
 # Define a function to extract features from a single image window
@@ -193,7 +174,6 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
         test_features = scaler.transform(np.array(features).reshape(1, -1))
         #6) Predict using your classifier
         prediction = clf.predict(test_features)
-        print('prediction ' + str(prediction))
         #7) If positive (prediction == 1) then save the window
         if prediction == 1:
             on_windows.append(window)
@@ -277,8 +257,6 @@ def get_hog_features(img, orient, pix_per_cell, cell_per_block,
         return features
 
 def bin_spatial(img, size=(32, 32)):
-    print(img[:,:,0].shape)
-    print(size)
     color1 = cv2.resize(img[:,:,0], size).ravel()
     color2 = cv2.resize(img[:,:,1], size).ravel()
     color3 = cv2.resize(img[:,:,2], size).ravel()
