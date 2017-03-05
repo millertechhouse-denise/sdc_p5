@@ -9,28 +9,87 @@ import cv2
 from scipy.ndimage.measurements import label
 from moviepy.editor import VideoFileClip
 import glob
+import os
+import os.path
+from sklearn.externals import joblib
+from sklearn.utils import shuffle
+from sklearn.cross_validation import train_test_split
+import training as tr
+from sklearn.svm import LinearSVC
 
 svc = None
 X_scaler = None
+
+ystart = 300
+ystop = 650
+scale = 1.5
+orient = 9
+pix_per_cell = 4
+cell_per_block = 2
+spatial_size = 32
+hist_bins = 12
+color_space = 'RGB2YCrCb'
+
+def train_model():
+
+    cars = []
+    notcars = []
+    for dirpath, dirnames, filenames in os.walk("./non-vehicles"):
+        for filename in [f for f in filenames if f.endswith(".png")]:
+            notcars.append(os.path.join(dirpath, filename))
+        
+    for dirpath, dirnames, filenames in os.walk("./vehicles"):
+        for filename in [f for f in filenames if f.endswith(".png")]:
+            cars.append(os.path.join(dirpath, filename))
+
+
+    car_features = hp.extract_features(cars, color_space=color_space, spatial_size=(spatial_size, spatial_size),
+                        hist_bins=hist_bins, orient=orient, 
+                        pix_per_cell=pix_per_cell, cell_per_block=cell_per_block, hog_channel='ALL',
+                        spatial_feat=True, hist_feat=True, hog_feat=True)
+    notcar_features = hp.extract_features(notcars, color_space=color_space, spatial_size=(spatial_size, spatial_size),
+                        hist_bins=hist_bins, orient=orient, 
+                        pix_per_cell=pix_per_cell, cell_per_block=cell_per_block, hog_channel='ALL',
+                        spatial_feat=True, hist_feat=True, hog_feat=True)
+
+    # Create an array stack of feature vectors
+    X = np.vstack((car_features, notcar_features)).astype(np.float64)                        
+    # Fit a per-column scaler
+    X_scaler = StandardScaler().fit(X)
+    # Apply the scaler to X
+    scaled_X = X_scaler.transform(X)
+
+    # Define the labels vector
+    y = np.hstack((np.ones(len(car_features)), np.zeros(len(notcar_features))))
+
+
+    # Split up data into randomized training and test sets
+    rand_state = np.random.randint(0, 100)
+    scaled_X, y = shuffle(scaled_X, y)
+    X_train, X_test, y_train, y_test = train_test_split(
+    scaled_X, y, test_size=0.2, random_state=rand_state)
+
+    svc = LinearSVC()
+
+    svc.fit(X_train, y_train)
+
+    # Check the score of the SVC
+    joblib.dump(svc, 'saved_svc.pickle') 
+    joblib.dump(X_scaler, 'saved_scalar.pickle') 
+    clf = joblib.load('saved_svc.pickle')
+    print('Test Accuracy of SVC = ', round(clf.score(X_test, y_test), 4))
 
 
     
 # Define a single function that can extract features using hog sub-sampling and make predictions
 def process_image(img):
-    ystart = 400
-    ystop = 650
-    scale = 1.5
-    orient = 9
-    pix_per_cell = 8
-    cell_per_block = 2
-    spatial_size = 32
-    hist_bins = 32
+
     
     draw_img = np.copy(img)
     img = img.astype(np.float32)/255
     
     img_tosearch = img[ystart:ystop,:,:]
-    ctrans_tosearch = hp.convert_color(img_tosearch, conv='RGB2YCrCb')
+    ctrans_tosearch = hp.convert_color(img_tosearch, conv=color_space)
     if scale != 1:
         imshape = ctrans_tosearch.shape
         ctrans_tosearch = cv2.resize(ctrans_tosearch, (np.int(imshape[1]/scale), np.int(imshape[0]/scale)))
@@ -86,15 +145,15 @@ def process_image(img):
                 ytop_draw = np.int(ytop*scale)
                 win_draw = np.int(window*scale)
                 bboxes.append(((xbox_left, ytop_draw+ystart), (xbox_left+win_draw,ytop_draw+win_draw+ystart)))
-                #cv2.rectangle(draw_img,(xbox_left, ytop_draw+ystart),(xbox_left+win_draw,ytop_draw+win_draw+ystart),(0,0,255),6) 
-    
+               # cv2.rectangle(draw_img,(xbox_left, ytop_draw+ystart),(xbox_left+win_draw,ytop_draw+win_draw+ystart),(0,0,255),6) 
     heat = np.zeros_like(img[:,:,0]).astype(np.float)
     
     # Add heat to each box in box list
     heat = hp.add_heat(heat,bboxes)
     
     # Apply threshold to help remove false positives
-    heat = hp.apply_threshold(heat,1)
+    threshold = 1
+    heat = hp.apply_threshold(heat,threshold)
 
     # Visualize the heatmap when displaying    
     heatmap = np.clip(heat, 0, 255)
@@ -108,6 +167,8 @@ def process_image(img):
         
     
 if __name__ == '__main__':
+    
+    train_model()
     
     global svc
     global X_scaler

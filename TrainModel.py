@@ -37,8 +37,8 @@ for dirpath, dirnames, filenames in os.walk("./vehicles"):
 #notcar_features = tr.extract_features(notcars, cspace='YUV', spatial_size=(spatial, spatial),
 #                        hist_bins=histbin, hist_range=(0, 256))
 
-car_features = hp.extract_features(cars, color_space='RGB2YCrCb')
-notcar_features = hp.extract_features(notcars, color_space='RGB2YCrCb')
+car_features = hp.extract_features(cars, color_space='HSV')
+notcar_features = hp.extract_features(notcars, color_space='HSV')
 
 # Create an array stack of feature vectors
 X = np.vstack((car_features, notcar_features)).astype(np.float64)                        
