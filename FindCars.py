@@ -14,21 +14,8 @@ def process_image(image, clf):
     
     scaler = 1
     
-    color_space = 'HLS'
-    
-    #convert to HLS
-    ctrans_tosearch = convert_color(img_tosearch, color_space)
-    
-    #convert entire image to HOG
-    feature_image[:,:,hog_channel]
-    orient, 
-    pix_per_cell
-    cell_per_block
-    vis=False
-    feature_vec=True
+    color_space = 'RGB2YCrCb'
 
-    feature_array = hog(img, orientations=orient, pixels_per_cell=(pix_per_cell, pix_per_cell), 
-        cells_per_block=(cell_per_block, cell_per_block), visualization=vis, feature_vector=False)
 
                         
     X_scaler = joblib.load('saved_scalar.pickle')
@@ -38,7 +25,7 @@ def process_image(image, clf):
     
     y_start_stop = [400, 720] # Min and max in y to search in slide_window()
     spatial_size = (50, 50) # Spatial binning dimensions
-    orient = 12  # HOG orientations
+    orient = 9  # HOG orientations
     pix_per_cell = 12 # HOG pixels per cell
     cell_per_block = 6 # HOG cells per block
     hog_channel = 1 # Can be 0, 1, 2, or "ALL"
@@ -147,7 +134,7 @@ if __name__ == '__main__':
     spatial_size = 32
     hist_bins = 32
     
-    #process_image(image, clf)
+    process_image(image, clf)
     new_image = find_cars(image, ystart, ystop, scale, clf, X_scaler, orient, 
         pix_per_cell, cell_per_block, spatial_size, hist_bins)
     plt.imshow(new_image)
