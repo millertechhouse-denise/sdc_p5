@@ -23,7 +23,7 @@ The goals / steps of this project are the following:
 [image7]: ./output_images/labels.png
 [image8]: ./output_images/car_found.png
 [image9]: ./output_images/hog_images.png
-[video1]: ./output_images/test_video.mp4
+[video1]: ./output_images/processed_video.mp4
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -74,7 +74,7 @@ I trained a linear SVM using color conversion to YCrCb, combining HOG features, 
 
 ####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I wanted as many windows as possible, scaling the image by 1.5, specifying 64 windows, sliding 2 cells per iteration, through y pixels 350-650, for a total of 720 windows.
+I wanted as many windows as possible, scaling the image by 1.5, specifying 64 windows, sliding 2 cells per iteration, through y pixels 400-650.
 
 ![alt text][image5]
 

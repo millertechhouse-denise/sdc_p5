@@ -22,7 +22,7 @@ import math
 svc = None
 X_scaler = None
 
-ystart = 350
+ystart = 400
 ystop = 650
 scale = 1.5
 orient = 9
@@ -32,7 +32,7 @@ spatial_size = 32
 hist_bins = 12
 color_space = 'RGB2YCrCb'
 
-video = 0
+video = False
 saved_boxes = []
 
 def train_model():
@@ -188,7 +188,7 @@ def process_image(img):
     if video == True:  
         #for videos, we want to track car that have been in multiple frames
         #this helps to avoid false positives and smooths the position and size of boxes
-        new_box_list = hp.get_nonzero_labels(np.copy(draw_img), labels)
+        new_box_list = hp.get_nonzero_labels(draw_img, labels)
         bboxes_draw = []
         prev_found = []
         for new_bx in new_box_list:
@@ -236,16 +236,16 @@ def process_image(img):
                 b_list.add_box(bx)
                 saved_boxes.append(b_list)
             i += 1
-        out_img = hp.draw_boxes(np.copy(draw_img), bboxes_draw)
+        out_img = hp.draw_boxes(draw_img, bboxes_draw)
     else:
-        out_img = hp.draw_labeled_bboxes(np.copy(draw_img), labels)
+        out_img = hp.draw_labeled_bboxes(draw_img, labels)
       
     return out_img
     
     
 if __name__ == '__main__':
     
-    train_model()
+    #train_model()
     
     global saved_boxes
     saved_boxes = []
@@ -260,12 +260,14 @@ if __name__ == '__main__':
     X_scaler = joblib.load('saved_scalar.pickle')
     
     #Test pipeline on static images
-    image_files = glob.glob('./test_images/*.jpg')
-    fig1 = plt.figure('HOG')
-    for fname in image_files:
-        image = mpimg.imread(fname)
-        new_image = process_image(image)
-        # cv2.imwrite('output_images/car_found.png', new_image)
+    disp = False
+    if disp == True:
+        image_files = glob.glob('./test_images/*.jpg')
+        fig1 = plt.figure('HOG')
+        for fname in image_files:
+            image = mpimg.imread(fname)
+            new_image = process_image(image)
+            # cv2.imwrite('output_images/car_found.png', new_image)
 
     video = True
     #apply pipeline to video
