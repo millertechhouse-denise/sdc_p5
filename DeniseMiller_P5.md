@@ -1,5 +1,4 @@
-##Writeup Template
-###You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
+##Denise Miller Project 5 - Vehicle Detection
 
 ---
 
@@ -18,8 +17,8 @@ The goals / steps of this project are the following:
 [image1]: ./output_images/car.png
 [image2]: ./output_images/not_car.png
 [image3]: ./output_images/hog.png
-[image4]: ./output_images/hog_features.jpg
-[image5]: ./output_images/windows.jpg
+[image4]: ./output_images/hog_features.png
+[image5]: ./output_images/windows.png
 [image6]: ./output_images/heat.png
 [image7]: ./output_images/labels.png
 [image8]: ./output_images/car_found.png
