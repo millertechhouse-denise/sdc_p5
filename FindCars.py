@@ -16,11 +16,13 @@ from sklearn.utils import shuffle
 from sklearn.cross_validation import train_test_split
 import training as tr
 from sklearn.svm import LinearSVC
+import frame_management as fm
+import math
 
 svc = None
 X_scaler = None
 
-ystart = 300
+ystart = 350
 ystop = 650
 scale = 1.5
 orient = 9
@@ -30,15 +32,28 @@ spatial_size = 32
 hist_bins = 12
 color_space = 'RGB2YCrCb'
 
-def train_model():
+video = 0
+saved_boxes = []
 
+def train_model():
+    """
+    Train model using linear SVM
+    Color conversion to YCrCb
+    Combine HOG features, spatial binning and color histograms 
+    Use sliding window search
+    If video, check for cars in previous frames 
+    
+    Save classifier and Scalar              
+    Soure: Udacity 
+    
+    """
     cars = []
     notcars = []
-    for dirpath, dirnames, filenames in os.walk("./non-vehicles"):
+    for dirpath, dirnames, filenames in os.walk("../non-vehicles"):
         for filename in [f for f in filenames if f.endswith(".png")]:
             notcars.append(os.path.join(dirpath, filename))
         
-    for dirpath, dirnames, filenames in os.walk("./vehicles"):
+    for dirpath, dirnames, filenames in os.walk("../vehicles"):
         for filename in [f for f in filenames if f.endswith(".png")]:
             cars.append(os.path.join(dirpath, filename))
 
@@ -76,15 +91,23 @@ def train_model():
     # Check the score of the SVC
     joblib.dump(svc, 'saved_svc.pickle') 
     joblib.dump(X_scaler, 'saved_scalar.pickle') 
-    clf = joblib.load('saved_svc.pickle')
-    print('Test Accuracy of SVC = ', round(clf.score(X_test, y_test), 4))
+    print('Test Accuracy of SVC = ', round(svc.score(X_test, y_test), 4))
 
 
     
-# Define a single function that can extract features using hog sub-sampling and make predictions
+
 def process_image(img):
-
+    """
+    Process image:
+    Color conversion to YCrCb
+    Combine HOG features, spatial binning and color histograms 
+    Use sliding window search
+    If video, check for cars in previous frames
     
+    Return image               
+    Soure: Udacity 
+    
+    """
     draw_img = np.copy(img)
     img = img.astype(np.float32)/255
     
@@ -110,10 +133,11 @@ def process_image(img):
     nysteps = (nyblocks - nblocks_per_window) // cells_per_step
     
     # Compute individual channel HOG features for the entire image
-    hog1 = hp.get_hog_features(ch1, orient, pix_per_cell, cell_per_block, feature_vec=False)
-    hog2 = hp.get_hog_features(ch2, orient, pix_per_cell, cell_per_block, feature_vec=False)
-    hog3 = hp.get_hog_features(ch3, orient, pix_per_cell, cell_per_block, feature_vec=False)
-    
+    hog1, im1 = hp.get_hog_features(ch1, orient, pix_per_cell, cell_per_block, feature_vec=False, vis=True)
+    hog2, im2 = hp.get_hog_features(ch2, orient, pix_per_cell, cell_per_block, feature_vec=False, vis=True)
+    hog3, im3 = hp.get_hog_features(ch3, orient, pix_per_cell, cell_per_block, feature_vec=False, vis=True)
+    t = 0
+    temp_boxes = []
     bboxes = []
     for xb in range(nxsteps):
         for yb in range(nysteps):
@@ -124,7 +148,7 @@ def process_image(img):
             hog_feat2 = hog2[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel() 
             hog_feat3 = hog3[ypos:ypos+nblocks_per_window, xpos:xpos+nblocks_per_window].ravel() 
             hog_features = np.hstack((hog_feat1, hog_feat2, hog_feat3))
-
+         
             xleft = xpos*pix_per_cell
             ytop = ypos*pix_per_cell
 
@@ -145,9 +169,9 @@ def process_image(img):
                 ytop_draw = np.int(ytop*scale)
                 win_draw = np.int(window*scale)
                 bboxes.append(((xbox_left, ytop_draw+ystart), (xbox_left+win_draw,ytop_draw+win_draw+ystart)))
-               # cv2.rectangle(draw_img,(xbox_left, ytop_draw+ystart),(xbox_left+win_draw,ytop_draw+win_draw+ystart),(0,0,255),6) 
+  
     heat = np.zeros_like(img[:,:,0]).astype(np.float)
-    
+
     # Add heat to each box in box list
     heat = hp.add_heat(heat,bboxes)
     
@@ -157,48 +181,95 @@ def process_image(img):
 
     # Visualize the heatmap when displaying    
     heatmap = np.clip(heat, 0, 255)
-
+    
     # Find final boxes from heatmap using label function
     labels = label(heatmap)
-    out_img = hp.draw_labeled_bboxes(np.copy(draw_img), labels)
-                
-    return out_img
-                            
+    
+    if video == True:  
+        #for videos, we want to track car that have been in multiple frames
+        #this helps to avoid false positives and smooths the position and size of boxes
+        new_box_list = hp.get_nonzero_labels(np.copy(draw_img), labels)
+        bboxes_draw = []
+        prev_found = []
+        for new_bx in new_box_list:
+            prev_found.append(0)
         
+        to_delete = []
+        #find the box in a previous frame or add to list
+        #only display boxes from previous frames
+        for saved_box in saved_boxes:
+            dist_thresh = 30
+            found = False
+            saved_box_data = saved_box.get_box_data()
+            found_box = None
+            index = 0
+            i = 0
+            for new_bx in new_box_list:
+                x1 = new_bx.center_x
+                y1 = new_bx.center_y
+                x2 = saved_box_data.center_x
+                y2 = saved_box_data.center_y
+                dist = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+                if dist < dist_thresh:
+                    found = True
+                    found_box = new_bx
+                    dist_thresh = dist
+                    index = i
+                i = i + 1
+            if found == True:
+                saved_box.add_box(found_box)
+                add_box = saved_box.get_box_data()
+                bboxes_draw.append(((add_box.top_x, add_box.top_y), (add_box.bottom_x,add_box.bottom_y)))
+                prev_found[index] = 1
+            else:
+                saved_box.increment_not_found()
+                if saved_box.get_count_not_found() > 3:
+                    to_delete.append(saved_box)
+        #delete boxes that have fallen out of frame
+        for b in to_delete:
+            saved_boxes.remove(b)
+        i = 0
+        #add new boxes to list
+        for bx in new_box_list:
+            if prev_found[i] < 1:
+                b_list = fm.Box_List()
+                b_list.add_box(bx)
+                saved_boxes.append(b_list)
+            i += 1
+        out_img = hp.draw_boxes(np.copy(draw_img), bboxes_draw)
+    else:
+        out_img = hp.draw_labeled_bboxes(np.copy(draw_img), labels)
+      
+    return out_img
+    
     
 if __name__ == '__main__':
     
     train_model()
     
+    global saved_boxes
+    saved_boxes = []
+    global video
+    video = False
+    
+    #load saved model and scalar
     global svc
-    global X_scaler
     svc = joblib.load('saved_svc.pickle')
+    
+    global X_scaler
     X_scaler = joblib.load('saved_scalar.pickle')
     
-    image = mpimg.imread('./test_images/test1.jpg')
-    
-    
-    #process_image(image, clf)
+    #Test pipeline on static images
     image_files = glob.glob('./test_images/*.jpg')
-    
-    i = 0
+    fig1 = plt.figure('HOG')
     for fname in image_files:
-        #
         image = mpimg.imread(fname)
         new_image = process_image(image)
-        plt.imshow(new_image)
-        plt.show()
-    
-    #iterate through each window
-    #predict if car found
-    #draw square for each car found
-    #create heatmap
-    #draw sqare outside heat map
-    #print('My SVC predicts: ', clf.predict(X_test[0:n_predict]))
-    
+        # cv2.imwrite('output_images/car_found.png', new_image)
 
-    white_output = 'output_images/test_video.mp4'
+    video = True
+    #apply pipeline to video
+    output = 'output_images/test_video.mp4'
     clip1 = VideoFileClip("project_video.mp4")
-   # clip2 = VideoFileClip("challenge_video.mp4")
-    white_clip = clip1.fl_image(process_image)
-    white_clip.write_videofile(white_output, audio=False)
+    clip = clip1.fl_image(process_image)
+    clip.write_videofile(output, audio=False)

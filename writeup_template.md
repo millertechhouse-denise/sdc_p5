@@ -15,14 +15,16 @@ The goals / steps of this project are the following:
 * Estimate a bounding box for vehicles detected.
 
 [//]: # (Image References)
-[image1]: ./examples/car_not_car.png
-[image2]: ./examples/HOG_example.jpg
-[image3]: ./examples/sliding_windows.jpg
-[image4]: ./examples/sliding_window.jpg
-[image5]: ./examples/bboxes_and_heat.png
-[image6]: ./examples/labels_map.png
-[image7]: ./examples/output_bboxes.png
-[video1]: ./project_video.mp4
+[image1]: ./output_images/car.png
+[image2]: ./output_images/not_car.png
+[image3]: ./output_images/hog.png
+[image4]: ./output_images/hog_features.jpg
+[image5]: ./output_images/window.jpg
+[image6]: ./output_images/heat.png
+[image7]: ./output_images/labels.png
+[image8]: ./output_images/car_found.png
+[image8]: ./output_images/car_found.png
+[video1]: ./output_images/project_video.mp4
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 ###Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -38,40 +40,50 @@ You're reading it!
 
 ####1. Explain how (and identify where in your code) you extracted HOG features from the training images.
 
-The code for this step is contained in the first code cell of the IPython notebook (or in lines # through # of the file called `some_file.py`).  
+The code for extracting HOG features in found in helper_functions.py, function get_hog_features, lines 206-228.
+
+For training, this is called through the functions single_img_features and extract_features in helper_functions.py, lines 10-83. 
 
 I started by reading in all the `vehicle` and `non-vehicle` images.  Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 
 ![alt text][image1]
+![alt text][image2]
 
 I then explored different color spaces and different `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`).  I grabbed random images from each of the two classes and displayed them to get a feel for what the `skimage.hog()` output looks like.
 
-Here is an example using the `YCrCb` color space and HOG parameters of `orientations=8`, `pixels_per_cell=(8, 8)` and `cells_per_block=(2, 2)`:
+Here is an example using the `YCrCb` color space and HOG parameters of `orientations=9`, `pixels_per_cell=(4, 4)` and `cells_per_block=(2, 2)`:
 
 
-![alt text][image2]
+![alt text][image3]
 
 ####2. Explain how you settled on your final choice of HOG parameters.
 
-I tried various combinations of parameters and...
+-The orientation did not have a large impact so I selected a number in the center (9)
+-The cells/block did not have a large impace, so I left the value at 2
+-The pix/cell had the largest impace, and a low number, such as 4, had the best result as shown in the image below comparing 4 and 16 pixels per cell.
+
+
+![alt text][image4]
 
 ####3. Describe how (and identify where in your code) you trained a classifier using your selected HOG features (and color features if you used them).
 
-I trained a linear SVM using...
+The function for training can be found in function train_model in FindCars.py, lines 38-84._
+I trained a linear SVM using color conversion to YCrCb, combining HOG features, spatial binning and color histograms and I normalized the features.  I split the training data into training and test data.  
+
 
 ###Sliding Window Search
 
 ####1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-I decided to search random window positions at random scales all over the image and came up with this (ok just kidding I didn't actually ;):
+I wanted as many windows as possible, scaling the image by 1.5, specifying 64 windows, sliding 2 cells per iteration, through y pixels 350-650, for a total of 720 windows.
 
-![alt text][image3]
+![alt text][image5]
 
 ####2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
 Ultimately I searched on two scales using YCrCb 3-channel HOG features plus spatially binned color and histograms of color in the feature vector, which provided a nice result.  Here are some example images:
 
-![alt text][image4]
+![alt text][image9]
 ---
 
 ### Video Implementation
@@ -88,13 +100,13 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 ### Here are six frames and their corresponding heatmaps:
 
-![alt text][image5]
-
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
 ![alt text][image6]
 
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
+### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
 ![alt text][image7]
+
+### Here the resulting bounding boxes are drawn onto the last frame in the series:
+![alt text][image8]
 
 
 
@@ -104,5 +116,5 @@ Here's an example result showing the heatmap from a series of frames of video, t
 
 ####1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+The main issue that I had with my pipeline was false positives and boxes that changed location and size between frames.  I addressed this by keeping track of the last 8 locations for each car.  I only displayed the box if the car was found in a previous frame.  And the location and size was averaged over the last 8 frames.
 

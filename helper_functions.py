@@ -4,16 +4,16 @@ import cv2
 from skimage.feature import hog
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
+import frame_management as fm
     
 
-# Define a function to extract features from a list of images
-# Have this function call bin_spatial() and color_hist()
 def extract_features(imgs, color_space='RGB', spatial_size=(32, 32),
                         hist_bins=32, orient=9, 
                         pix_per_cell=8, cell_per_block=2, hog_channel='ALL',
                         spatial_feat=True, hist_feat=True, hog_feat=True):
     """
-
+    Extracts features in each image in list
+    Returns the list of features
     Soure: Udacity 
     
     """
@@ -32,20 +32,29 @@ def extract_features(imgs, color_space='RGB', spatial_size=(32, 32),
         features.append(file_features)
     # Return list of feature vectors
     return features
-# Define a function to extract features from a single image window
-# This function is very similar to extract_features()
-# just for a single image rather than list of images
+    
+
 def single_img_features(img, color_space='RGB', spatial_size=(32, 32),
                         hist_bins=32, orient=9, 
                         pix_per_cell=8, cell_per_block=2, hog_channel='ALL',
-                        spatial_feat=True, hist_feat=True, hog_feat=True):    
+                        spatial_feat=True, hist_feat=True, hog_feat=True):  
+    """
+    Extracts features (based on boolean flag in parameter list)
+    1) Convert to new color space
+    2) Calculates spatial features
+    3) Calculate histogram features
+    4) Calculate HOG features
+    
+    Returns the list of features
+                        
+    Soure: Udacity 
+    
+    """  
     #1) Define an empty list to receive features
     img_features = []
     #2) Apply color conversion if other than 'RGB'
     feature_image = convert_color(img, conv=color_space)     
     
-   # plt.imshow(feature_image)
-   # plt.show()
     #3) Compute spatial features if flag is set
     if spatial_feat == True:
         spatial_features = bin_spatial(feature_image, size=spatial_size)
@@ -75,10 +84,10 @@ def single_img_features(img, color_space='RGB', spatial_size=(32, 32),
     
 
 
-# Define a function to draw bounding boxes
 def draw_boxes(img, bboxes, color=(0, 0, 255), thick=6):
     """
-
+    Draws bounding boxes
+    
     Soure: Udacity 
     
     """
@@ -91,13 +100,41 @@ def draw_boxes(img, bboxes, color=(0, 0, 255), thick=6):
     # Return the image copy with boxes drawn
     return imcopy
     
-
-
-
+def get_nonzero_labels(img, labels):
+    """
+    Gets bounding boxes based on label data
+    Modified draw_labeled_bboxes that does not draw
     
+    Soure: Udacity 
+    
+ 
+    """
+    # Iterate through all detected cars
+    box_list = []
+    for car_number in range(1, labels[1]+1):
+        # Find pixels with each car_number label value
+        nonzero = (labels[0] == car_number).nonzero()
+        # Identify x and y values of those pixels
+        nonzeroy = np.array(nonzero[0])
+        nonzerox = np.array(nonzero[1])
+        # Define a bounding box based on min/max x and y
+        bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+     
+        new_box = fm.Box()
+        new_box.top_x = bbox[0][0]
+        new_box.top_y = bbox[0][1]
+        new_box.bottom_x = bbox[1][0]
+        new_box.bottom_y = bbox[1][1]
+        new_box.center_x = (new_box.top_x + new_box.bottom_x) //2
+        new_box.center_y = (new_box.top_y + new_box.bottom_y) //2
+     
+        box_list.append(new_box)
+    # Return the image
+    return box_list   
+
 def draw_labeled_bboxes(img, labels):
     """
-
+    Draws bounding boxes based on label value
     Soure: Udacity 
     
     """
@@ -112,11 +149,13 @@ def draw_labeled_bboxes(img, labels):
         bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
         # Draw the box on the image
         cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 6)
+
     # Return the image
     return img
     
 def add_heat(heatmap, bbox_list):
     """
+    
 
     Soure: Udacity 
     
@@ -132,7 +171,7 @@ def add_heat(heatmap, bbox_list):
     
 def apply_threshold(heatmap, threshold):
     """
-
+    Returns heatmap only including pixels above threshold
     Soure: Udacity 
     
     """
@@ -189,6 +228,11 @@ def get_hog_features(img, orient, pix_per_cell, cell_per_block,
         return features
 
 def bin_spatial(img, size=(32, 32)):
+    """
+    Created binned color features                 
+    Soure: Udacity 
+    
+    """
     color1 = cv2.resize(img[:,:,0], size).ravel()
     color2 = cv2.resize(img[:,:,1], size).ravel()
     color3 = cv2.resize(img[:,:,2], size).ravel()
